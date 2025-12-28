@@ -43,12 +43,12 @@ st.markdown("""
         display: inline-block;
         padding: 0.5rem 1rem;
         margin: 0.3rem;
-        background-color: #f0f2f6;
+        background-color: #000;
         border-radius: 20px;
         border-left: 4px solid #ff4b4b;
     }
     .summary-box {
-        background-color: #f8f9fa;
+        background-color: #000;
         padding: 1.5rem;
         border-radius: 10px;
         border-left: 5px solid #667eea;
