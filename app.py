@@ -4,44 +4,24 @@ load_dotenv()
 import streamlit as st
 import os
 import tempfile
-import time
 from pdfminer.high_level import extract_text
 import google.generativeai as genai
-from google.api_core.exceptions import DeadlineExceeded
 
 # ---------------- CONFIG ----------------
 genai.configure(api_key=os.getenv("GENAI_API_KEY"))
 
 # ---------------- GEMINI FUNCTION ----------------
 def get_gemini_response(input_prompt, resume_text, jd_text):
-    model = genai.GenerativeModel(
-        "models/gemini-1.5-flash",
-        generation_config={
-            "temperature": 0.2,
-            "max_output_tokens": 512
-        }
+    model = genai.GenerativeModel("models/gemini-1.5-flash")
+
+    response = model.generate_content(
+        [
+            input_prompt,
+            resume_text[:12000],  # safety limit
+            jd_text
+        ]
     )
-
-    # HARD LIMITS (CRITICAL for Streamlit Cloud)
-    resume_text = resume_text[:6000]
-    jd_text = jd_text[:3000]
-
-    for attempt in range(2):  # retry once
-        try:
-            response = model.generate_content(
-                [
-                    input_prompt,
-                    resume_text,
-                    jd_text
-                ],
-                request_options={"timeout": 30}
-            )
-            return response.text
-
-        except DeadlineExceeded:
-            if attempt == 1:
-                return "⏱️ The analysis took too long. Please try again or upload a shorter resume."
-            time.sleep(2)
+    return response.text
 
 
 # ---------------- PDF TEXT EXTRACTION ----------------
@@ -88,7 +68,7 @@ if uploaded_file:
     if submit1 or submit2:
         resume_text = input_pdf_setup(uploaded_file)
 
-        with st.spinner("🔎 Analyzing resume (this may take a few seconds)..."):
+        with st.spinner("Analyzing resume..."):
             if submit1:
                 response = get_gemini_response(
                     input_prompt1, resume_text, input_text
