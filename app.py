@@ -22,7 +22,8 @@ genai.configure(api_key=api_key)
 
 def get_gemini_response(input):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Use the correct model name without 'models/' prefix
+        model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(input)
         return response.text
     except Exception as e:
