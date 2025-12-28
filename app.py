@@ -138,8 +138,18 @@ def extract_percentage(match_str):
 def display_results(response_text):
     """Display the analysis results in an attractive format"""
     try:
+        # Clean the response text - remove markdown code blocks if present
+        cleaned_text = response_text.strip()
+        if cleaned_text.startswith('```json'):
+            cleaned_text = cleaned_text[7:]
+        if cleaned_text.startswith('```'):
+            cleaned_text = cleaned_text[3:]
+        if cleaned_text.endswith('```'):
+            cleaned_text = cleaned_text[:-3]
+        cleaned_text = cleaned_text.strip()
+
         # Try to parse as JSON
-        result = json.loads(response_text)
+        result = json.loads(cleaned_text)
 
         # Extract match percentage
         match_percentage = extract_percentage(result.get("JD Match", "0%"))
@@ -187,7 +197,16 @@ def display_results(response_text):
         with col2:
             st.markdown("### 📝 Profile Summary & Recommendations")
             summary = result.get("Profile Summary", "")
-            st.markdown(f'<div class="summary-box">{summary}</div>', unsafe_allow_html=True)
+
+            # Split summary into paragraphs for better readability
+            paragraphs = summary.split('\n\n')
+            for para in paragraphs:
+                if para.strip():
+                    # Check if it's a numbered list or bullet point
+                    if re.match(r'^\d+\.', para.strip()) or para.strip().startswith('**'):
+                        st.markdown(para)
+                    else:
+                        st.markdown(f'<div class="summary-box">{para}</div>', unsafe_allow_html=True)
 
         st.markdown("---")
 
@@ -206,10 +225,12 @@ def display_results(response_text):
             mime="application/json"
         )
 
-    except json.JSONDecodeError:
-        # If JSON parsing fails, display raw text in a nice format
+    except json.JSONDecodeError as e:
+        # If JSON parsing fails, try to extract data manually
+        st.error("⚠️ Could not parse the response properly. Displaying raw analysis:")
         st.markdown("### 📊 Analysis Results")
-        st.markdown(f'<div class="summary-box">{response_text}</div>', unsafe_allow_html=True)
+        st.text(response_text)
+        st.info("💡 The AI returned an unexpected format. Please try again or contact support.")
 
 
 # Header
@@ -258,17 +279,24 @@ with col2:
 
 # Prompt Template
 input_prompt = """
-Hey Act Like a skilled or very experience ATS(Application Tracking System)
-with a deep understanding of tech field,software engineering,data science,data analyst
-and big data engineer. Your task is to evaluate the resume based on the given job description.
-You must consider the job market is very competitive and you should provide 
-best assistance for improving the resumes. Assign the percentage Matching based 
-on JD and the missing keywords with high accuracy.
-resume:{text}
-description:{jd}
+Act as an expert ATS (Application Tracking System) with deep knowledge of tech fields including software engineering, data science, data analysis, and big data engineering. 
 
-I want the response in one single string having the structure
-{{"JD Match":"%","MissingKeywords":[],"Profile Summary":""}}
+Analyze the resume against the job description below. Consider that the job market is highly competitive and provide actionable insights for improvement.
+
+Resume:
+{text}
+
+Job Description:
+{jd}
+
+Provide your analysis in EXACTLY this JSON format (no extra text, no markdown code blocks, just pure JSON):
+{{"JD Match":"X%","MissingKeywords":["keyword1","keyword2"],"Profile Summary":"detailed summary here"}}
+
+Important:
+- JD Match should be a percentage (e.g., "75%")
+- MissingKeywords should be an array of specific keywords/skills missing from the resume
+- Profile Summary should be a detailed paragraph with actionable recommendations
+- Return ONLY the JSON object, nothing else
 """
 
 # Submit button (centered)
